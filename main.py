@@ -13,6 +13,11 @@ from views.usuarios import UsuariosView
 from views.reportes import ReportesView
 from views.auditoria import AuditoriaView
 
+# Integrantes del grupo:
+#   Arnold Beleño Zuletta
+#   Carlos Colón Cantillo
+#   Jesús Santiago Díaz
+
 def main(page: ft.Page):
     # --- Configuración de Ventana ---
     page.title = "POS ERP - Sistema de Gestión Comercial"
