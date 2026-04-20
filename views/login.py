@@ -1,5 +1,6 @@
 import flet as ft
 from core.colors import *
+from core.database import get_connection
 
 def LoginView(page: ft.Page, on_login_success):
     """
@@ -41,15 +42,28 @@ def LoginView(page: ft.Page, on_login_success):
     )
 
     def do_login(e):
-        # Lógica de roles definida en el Análisis (Imagen 3)
-        username = tf_user.value.lower()
-        if "admin" in username:
-            role = "Administrador"
-        elif "super" in username:
-            role = "Supervisor"
+        username = tf_user.value
+        password = tf_pass.value
+        
+        if not username or not password:
+            page.snack_bar = ft.SnackBar(ft.Text("Por favor, ingrese usuario y contraseña"), bgcolor=DANGER_COLOR)
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT role FROM users WHERE username = ? AND password = ? AND status = 1", (username, password))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            role = user["role"]
+            on_login_success(role, username)
         else:
-            role = "Cajero"
-        on_login_success(role)
+            page.snack_bar = ft.SnackBar(ft.Text("Usuario o contraseña incorrectos"), bgcolor=DANGER_COLOR)
+            page.snack_bar.open = True
+            page.update()
 
     def open_recovery_modal(e):
         # El documento especifica que la recuperación es un flujo alterno (Imagen 2)
