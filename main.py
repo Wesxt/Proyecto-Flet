@@ -18,6 +18,10 @@ class AppState:
     def __init__(self):
         self.role = None
         self.username = ""
+# Integrantes del grupo:
+#   Arnold Beleño Zuletta
+#   Carlos Colón Cantillo
+#   Jesús Santiago Díaz
 
 def main(page: ft.Page):
     # Inicializar Base de Datos
