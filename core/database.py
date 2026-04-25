@@ -21,9 +21,16 @@ def init_db():
         email TEXT,
         password TEXT NOT NULL,
         role TEXT NOT NULL,
+        salary REAL DEFAULT 0,
         status INTEGER DEFAULT 1
     )
     ''')
+    
+    # Intento de agregar la columna 'salary' por si la tabla ya existe
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN salary REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass  # La columna ya existe
     
     # Create Products table
     cursor.execute('''
