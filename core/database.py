@@ -43,7 +43,11 @@ def init_db():
         stock REAL DEFAULT 0,
         stock_min REAL DEFAULT 0,
         category TEXT,
-        status INTEGER DEFAULT 1
+        in_limit INTEGER DEFAULT 10,
+        out_limit INTEGER DEFAULT 10,
+        adj_limit INTEGER DEFAULT 10,
+        status INTEGER DEFAULT 1,
+        image TEXT
     )
     ''')
     
@@ -52,6 +56,8 @@ def init_db():
     CREATE TABLE IF NOT EXISTS clients (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fullname TEXT NOT NULL,
+        doc_type TEXT,
+        doc_num TEXT,
         email TEXT,
         phone TEXT,
         address TEXT
@@ -65,11 +71,18 @@ def init_db():
         client_id INTEGER,
         user_id INTEGER,
         total REAL NOT NULL,
+        payment_method TEXT DEFAULT 'Efectivo',
         date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (client_id) REFERENCES clients (id),
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')
+    
+    # Intento de agregar la columna payment_method por si la tabla ya existe
+    try:
+        cursor.execute("ALTER TABLE sales ADD COLUMN payment_method TEXT DEFAULT 'Efectivo'")
+    except sqlite3.OperationalError:
+        pass  # La columna ya existe
     
     # Create Sale Details table
     cursor.execute('''
@@ -83,6 +96,37 @@ def init_db():
         FOREIGN KEY (product_id) REFERENCES products (id)
     )
     ''')
+
+    # Create Reports table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        start_date TEXT,
+        end_date TEXT,
+        summary TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
+    # Create Cash Registers table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS cash_registers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        opening_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        closing_time TIMESTAMP,
+        initial_amount REAL NOT NULL,
+        expected_amount REAL,
+        actual_amount REAL,
+        cash_sales REAL DEFAULT 0,
+        card_sales REAL DEFAULT 0,
+        difference REAL,
+        status INTEGER DEFAULT 1,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+    ''')
+
     
     # Insert default users if not exists
     users_to_create = [
@@ -103,12 +147,12 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM products")
     if cursor.fetchone()[0] == 0:
         sample_products = [
-            ('Arroz 1kg', 'Arroz blanco de grano largo', 1.00, 1.50, 100, 10, 'Abarrotes', 1),
-            ('Aceite 1L', 'Aceite vegetal refinado', 2.50, 3.20, 50, 5, 'Aceites', 1),
-            ('Leche 1L', 'Leche entera pasteurizada', 0.80, 1.10, 80, 10, 'Lácteos', 1),
-            ('Pan Molde', 'Pan de molde blanco 500g', 1.40, 2.00, 30, 5, 'Panadería', 1)
+            ('Arroz 1kg', 'Arroz blanco de grano largo', 1.00, 1.50, 100, 10, 'Abarrotes', 10, 10, 10, 1),
+            ('Aceite 1L', 'Aceite vegetal refinado', 2.50, 3.20, 50, 5, 'Aceites', 10, 10, 10, 1),
+            ('Leche 1L', 'Leche entera pasteurizada', 0.80, 1.10, 80, 10, 'Lácteos', 10, 10, 10, 1),
+            ('Pan Molde', 'Pan de molde blanco 500g', 1.40, 2.00, 30, 5, 'Panadería', 10, 10, 10, 1)
         ]
-        cursor.executemany('INSERT INTO products (name, description, price_buy, price_sell, stock, stock_min, category, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', sample_products)
+        cursor.executemany('INSERT INTO products (name, description, price_buy, price_sell, stock, stock_min, category, in_limit, out_limit, adj_limit, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', sample_products)
 
     conn.commit()
     conn.close()

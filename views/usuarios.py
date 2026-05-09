@@ -260,7 +260,7 @@ def UsuariosView(page: ft.Page):
             tf_fullname, tf_user, tf_email, tf_pass, tf_confirm, tf_salary, dd_role, sw_status,
             ft.Row([
                 ft.OutlinedButton("Restablecer", expand=True, on_click=reset_fields),
-                ft.ElevatedButton("Registrar", bgcolor=PRIMARY_COLOR, color="white", expand=True, on_click=register_user)
+                ft.Button("Registrar", bgcolor=PRIMARY_COLOR, color="white", expand=True, on_click=register_user)
             ], spacing=10)
         ], scroll=ft.ScrollMode.AUTO)
     )

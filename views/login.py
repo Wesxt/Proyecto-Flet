@@ -41,13 +41,28 @@ def LoginView(page: ft.Page, on_login_success):
         visible=False
     )
 
+    error_text = ft.Text(
+        "",
+        color=DANGER_COLOR,
+        size=14,
+        weight=ft.FontWeight.W_500,
+        visible=False
+    )
+
+    def clear_error(e):
+        error_text.visible = False
+        page.update()
+
+    tf_user.on_change = clear_error
+    tf_pass.on_change = clear_error
+
     def do_login(e):
         username = tf_user.value
         password = tf_pass.value
         
         if not username or not password:
-            page.snack_bar = ft.SnackBar(ft.Text("Por favor, ingrese usuario y contraseña"), bgcolor=DANGER_COLOR)
-            page.snack_bar.open = True
+            error_text.value = "Por favor, ingrese usuario y contraseña"
+            error_text.visible = True
             page.update()
             return
 
@@ -61,8 +76,8 @@ def LoginView(page: ft.Page, on_login_success):
             role = user["role"]
             on_login_success(role, username)
         else:
-            page.snack_bar = ft.SnackBar(ft.Text("Usuario o contraseña incorrectos"), bgcolor=DANGER_COLOR)
-            page.snack_bar.open = True
+            error_text.value = "Usuario o contraseña incorrectos"
+            error_text.visible = True
             page.update()
 
     def open_recovery_modal(e):
@@ -113,6 +128,7 @@ def LoginView(page: ft.Page, on_login_success):
                 ft.Text("Bienvenido", size=28, weight=ft.FontWeight.BOLD),
                 tf_user,
                 tf_pass,
+                error_text,
                 ft.TextButton(
                     "¿Se le olvidó la contraseña?",
                     style=ft.ButtonStyle(color=TEXT_SECONDARY),

@@ -18,9 +18,11 @@ class AppState:
     def __init__(self):
         self.role = None
         self.username = ""
+        self.cart_items = []
+
+# ... (omitiendo código intermedio que no cambiare directamente en la misma llamada, usaré dos llamadas)
 # Integrantes del grupo:
 #   Arnold Beleño Zuletta
-#   Carlos Colón Cantillo
 #   Jesús Santiago Díaz
 
 def main(page: ft.Page):
@@ -60,8 +62,11 @@ def main(page: ft.Page):
             ]
         elif role == "Cajero":
             return [
-                ft.NavigationRailDestination(icon=ft.Icons.POINT_OF_SALE, selected_icon=ft.Icons.POINT_OF_SALE, label="Ventas"),
+                ft.NavigationRailDestination(icon=ft.Icons.POINT_OF_SALE, selected_icon=ft.Icons.POINT_OF_SALE, label="Punto de venta"),
                 ft.NavigationRailDestination(icon=ft.Icons.RECEIPT_LONG, selected_icon=ft.Icons.RECEIPT_LONG, label="Facturas"),
+                ft.NavigationRailDestination(icon=ft.Icons.SHOPPING_BAG_OUTLINED, selected_icon=ft.Icons.SHOPPING_BAG, label="Productos"),
+                ft.NavigationRailDestination(icon=ft.Icons.SHOPPING_CART_CHECKOUT, selected_icon=ft.Icons.SHOPPING_CART_CHECKOUT, label="Ventas"),
+                ft.NavigationRailDestination(icon=ft.Icons.STAR_OUTLINE, selected_icon=ft.Icons.STAR, label="Clientes Frecuentes"),
             ]
         return []
 
@@ -76,7 +81,9 @@ def main(page: ft.Page):
             views = ["inventario", "productos", "auditoria"]
             change_view(views[idx])
         elif role == "Cajero":
-            views = ["pos", "billing"]
+            # Nota: "ventas" y "facturas" pueden apuntar a la misma vista temporalmente o a vistas existentes.
+            # "pos" = Punto de Venta, "productos" = Productos, "clientes" = Clientes Frecuentes
+            views = ["pos", "billing", "productos", "reportes", "clientes"]
             change_view(views[idx])
 
     # Rail de navegación lateral
@@ -101,7 +108,8 @@ def main(page: ft.Page):
 
     tf_close_pass.on_change = validate_close_pass
 
-    def close_cash_session(e):
+    def close_cash_session(e, dialog):
+        nonlocal view_container
         conn = get_connection()
         cursor = conn.cursor()
         # IMPORTANTE: Usar el username guardado en el estado
@@ -112,7 +120,11 @@ def main(page: ft.Page):
         if user:
             state.role = None
             state.username = ""
+            dialog.open = False
+            
             page.controls.clear()
+            
+            view_container = ft.Container(expand=True)
             page.add(view_container)
             change_view("login")
             page.update()
@@ -121,12 +133,48 @@ def main(page: ft.Page):
             error_text_modal.visible = True
             page.update()
 
-    btn_confirm_close.on_click = close_cash_session
 
     def show_close_cash_modal(e):
+        # Calcular ventas del dia para el cierre
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Buscar el ID del usuario activo
+        cursor.execute("SELECT id FROM users WHERE username = ?", (state.username,))
+        u = cursor.fetchone()
+        user_id = u["id"] if u else None
+        
+        # Ventas de hoy del usuario
+        cursor.execute('''
+            SELECT 
+                COUNT(id) as total_ventas,
+                SUM(CASE WHEN payment_method = 'Efectivo' THEN total ELSE 0 END) as total_efectivo,
+                SUM(CASE WHEN payment_method = 'Tarjeta' THEN total ELSE 0 END) as total_tarjeta,
+                SUM(total) as total_esperado
+            FROM sales 
+            WHERE user_id = ? AND date(date, 'localtime') = date('now', 'localtime')
+        ''', (user_id,))
+        res = cursor.fetchone()
+        conn.close()
+
+        total_ventas = res["total_ventas"] or 0
+        t_efectivo = res["total_efectivo"] or 0
+        t_tarjeta = res["total_tarjeta"] or 0
+        t_esperado = res["total_esperado"] or 0
+
+        # Mostramos los datos de Cierre de Caja (RF12)
+        info_cierre = ft.Column([
+            ft.Text(f"Total de ventas realizadas hoy: {total_ventas}"),
+            ft.Text(f"Ventas en Efectivo: $ {t_efectivo:,.2f}"),
+            ft.Text(f"Ventas con Tarjeta: $ {t_tarjeta:,.2f}"),
+            ft.Text(f"Total Esperado en Caja: $ {t_esperado:,.2f}", weight=ft.FontWeight.BOLD, color=SUCCESS_COLOR),
+            ft.Divider(color=DIVIDER_COLOR),
+        ])
+
         dialog = ft.AlertDialog(
-            title=ft.Text("¿Está seguro de cerrar caja?", weight=ft.FontWeight.BOLD),
+            title=ft.Text("Cierre de Sesión", weight=ft.FontWeight.BOLD),
             content=ft.Column([
+                info_cierre,
                 ft.Text(f"Usuario activo: {state.username}", size=14, color=TEXT_SECONDARY),
                 ft.Text("Ingrese su contraseña para terminar el turno:", size=14, color=TEXT_SECONDARY),
                 tf_close_pass,
@@ -138,6 +186,7 @@ def main(page: ft.Page):
             ],
             bgcolor=SURFACE_COLOR
         )
+        btn_confirm_close.on_click = lambda e: close_cash_session(e, dialog)
         page.overlay.append(dialog)
         dialog.open = True
         tf_close_pass.value = ""
@@ -151,7 +200,7 @@ def main(page: ft.Page):
 
     close_cash_btn = ft.Container(
         content=ft.TextButton(
-            "Cerrar caja",
+            "Cerrar sesión",
             icon=ft.Icons.POWER_SETTINGS_NEW,
             style=ft.ButtonStyle(color=DANGER_COLOR),
             on_click=show_close_cash_modal
@@ -166,9 +215,9 @@ def main(page: ft.Page):
         elif name == "dashboard":
             view_container.content = DashboardView(page)
         elif name == "pos":
-            view_container.content = POSView(page, lambda: change_view_from_internal("billing"))
+            view_container.content = POSView(page, lambda: change_view_from_internal("billing"), state)
         elif name == "billing":
-            view_container.content = BillingView(page)
+            view_container.content = BillingView(page, lambda: change_view_from_internal("pos"), state)
         elif name == "clientes":
             view_container.content = ClientesView(page)
         elif name == "productos":
