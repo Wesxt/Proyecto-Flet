@@ -218,7 +218,7 @@ def POSView(page: ft.Page, navigate_to_billing, state):
         conn.commit()
         conn.close()
         
-        dialog.open = False
+        page.pop_dialog()
         check_active_register()
         page.update()
 
@@ -286,14 +286,12 @@ def POSView(page: ft.Page, navigate_to_billing, state):
             conn.commit()
             conn.close()
             
-            d.open = False
+            page.pop_dialog()
             page.snack_bar = ft.SnackBar(ft.Text(f"Caja cerrada. Diferencia: $ {diferencia:,.2f}"), bgcolor=WARNING_COLOR if diferencia != 0 else SUCCESS_COLOR)
             page.snack_bar.open = True
             
             # Show apertura again
-            if modal_apertura not in page.overlay:
-                page.overlay.append(modal_apertura)
-            modal_apertura.open = True
+            page.show_dialog(modal_apertura)
             page.update()
 
         dialog = ft.AlertDialog(
@@ -306,14 +304,13 @@ def POSView(page: ft.Page, navigate_to_billing, state):
                 tf_actual_amount
             ], tight=True),
             actions=[
-                ft.TextButton("Cancelar", on_click=lambda _: setattr(dialog, 'open', False) or page.update()),
+                ft.TextButton("Cancelar", on_click=lambda _: page.pop_dialog() or page.update()),
                 ft.Button("Confirmar Cierre", bgcolor=DANGER_COLOR, color="white", on_click=lambda e: confirm_close(e, dialog))
             ],
             bgcolor=SURFACE_COLOR
         )
         if dialog not in page.overlay:
-            page.overlay.append(dialog)
-        dialog.open = True
+            page.show_dialog(dialog)
         page.update()
 
     load_products_from_db()
@@ -321,9 +318,7 @@ def POSView(page: ft.Page, navigate_to_billing, state):
     update_totals()
 
     if not check_active_register():
-        if modal_apertura not in page.overlay:
-            page.overlay.append(modal_apertura)
-        modal_apertura.open = True
+        page.show_dialog(modal_apertura)
 
     return ft.Container(
         expand=True, padding=20, bgcolor=BACKGROUND_COLOR,

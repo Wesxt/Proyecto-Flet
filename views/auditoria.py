@@ -55,8 +55,7 @@ def AuditoriaView(page: ft.Page):
             content=content,
             bgcolor=SURFACE_COLOR
         )
-        page.overlay.append(dialog)
-        dialog.open = True
+        page.show_dialog(dialog)
         page.update()
 
     # --- Tabla Principal (Imagen 16) ---

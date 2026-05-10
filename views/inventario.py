@@ -107,7 +107,7 @@ def InventarioView(page: ft.Page):
             cursor.execute("UPDATE products SET status = 0 WHERE id = ?", (product_id,))
             conn.commit()
             conn.close()
-            confirm_dialog.open = False
+            page.pop_dialog()
             load_data()
             page.update()
 
@@ -119,8 +119,7 @@ def InventarioView(page: ft.Page):
                 ft.ElevatedButton("Eliminar", bgcolor=DANGER_COLOR, color="white", on_click=confirm_delete)
             ]
         )
-        page.overlay.append(confirm_dialog)
-        confirm_dialog.open = True
+        page.show_dialog(confirm_dialog)
         page.update()
 
     def save_item(is_edit, product_id, data):
@@ -231,12 +230,11 @@ def InventarioView(page: ft.Page):
             bgcolor=SURFACE_COLOR,
             shape=ft.RoundedRectangleBorder(radius=BORDER_RADIUS)
         )
-        page.overlay.append(dialog)
-        dialog.open = True
+        page.show_dialog(dialog)
         page.update()
 
     def close_dialog(dialog):
-        dialog.open = False
+        page.pop_dialog()
         page.update()
 
     # --- Layout Panels ---

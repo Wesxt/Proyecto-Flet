@@ -125,10 +125,7 @@ def UsuariosView(page: ft.Page):
             conn.commit()
             conn.close()
         def close_delete_dialog(dlg):
-            dlg.open = False
-            page.update()
-            if dlg in page.overlay:
-                page.overlay.remove(dlg)
+            page.pop_dialog()
             page.update()
 
         dialog = ft.AlertDialog(
@@ -140,8 +137,7 @@ def UsuariosView(page: ft.Page):
             ],
             bgcolor=SURFACE_COLOR
         )
-        page.overlay.append(dialog)
-        dialog.open = True
+        page.show_dialog(dialog)
         page.update()
 
     def register_user(e):
@@ -222,11 +218,15 @@ def UsuariosView(page: ft.Page):
             ''', (edit_fullname.value, edit_user.value, edit_email.value, edit_role.value, new_salary, 1 if edit_status.value else 0, user["id"]))
             conn.commit()
             conn.close()
-        def close_edit_dialog(dlg):
-            dlg.open = False
+            load_users()
+            page.snack_bar = ft.SnackBar(ft.Text("Usuario actualizado exitosamente"), bgcolor=SUCCESS_COLOR)
+            page.snack_bar.open = True
             page.update()
-            if dlg in page.overlay:
-                page.overlay.remove(dlg)
+            page.pop_dialog()
+            page.update()
+
+        def close_edit_dialog(dlg):
+            page.pop_dialog()
             page.update()
 
         dialog = ft.AlertDialog(
@@ -241,11 +241,11 @@ def UsuariosView(page: ft.Page):
             ],
             bgcolor=SURFACE_COLOR
         )
-        page.open(dialog)
+        page.show_dialog(dialog)
         page.update()
 
     def close_dialog(dialog):
-        page.close(dialog)
+        page.pop_dialog()
         page.update()
 
     def reset_fields(e):

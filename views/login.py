@@ -99,7 +99,7 @@ def LoginView(page: ft.Page, on_login_success):
             bgcolor=SURFACE_COLOR,
             shape=ft.RoundedRectangleBorder(radius=BORDER_RADIUS)
         )
-        page.open(dialog)
+        page.show_dialog(dialog)
         page.update()
 
     def send_verification(dialog):
@@ -108,7 +108,7 @@ def LoginView(page: ft.Page, on_login_success):
         page.update()
 
     def close_dialog(dialog):
-        page.close(dialog)
+        page.pop_dialog()
         recovery_info_text.visible = False
         page.update()
 

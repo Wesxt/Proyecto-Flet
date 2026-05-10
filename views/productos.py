@@ -116,7 +116,7 @@ def ProductosView(page: ft.Page):
         conn.commit()
         conn.close()
         
-        dialog.open = False
+        page.pop_dialog()
         show_toast("Producto eliminado", WARNING_COLOR)
         page.update()
         load_products()
@@ -153,7 +153,7 @@ def ProductosView(page: ft.Page):
                     1 if m_status.value else 0, prod["id"]
                 ))
                 conn.commit()
-                dialog.open = False
+                page.pop_dialog()
                 show_toast("Producto actualizado", SUCCESS_COLOR)
                 page.update()
                 load_products()
@@ -177,12 +177,11 @@ def ProductosView(page: ft.Page):
             ],
             bgcolor=SURFACE_COLOR
         )
-        page.overlay.append(dialog)
-        dialog.open = True
+        page.show_dialog(dialog)
         page.update()
 
     def close_dialog(dialog):
-        dialog.open = False
+        page.pop_dialog()
         page.update()
 
     # --- Layout ---

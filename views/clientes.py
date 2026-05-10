@@ -96,7 +96,7 @@ def ClientesView(page: ft.Page):
             cursor.execute("DELETE FROM clients WHERE id = ?", (client_id,))
             conn.commit()
             conn.close()
-            confirm_dialog.open = False
+            page.pop_dialog()
             page.update()
             show_toast("Cliente eliminado", WARNING_COLOR)
             load_clients()
@@ -109,8 +109,7 @@ def ClientesView(page: ft.Page):
                 ft.Button("Eliminar", bgcolor=DANGER_COLOR, color="white", on_click=confirm_delete)
             ]
         )
-        page.overlay.append(confirm_dialog)
-        confirm_dialog.open = True
+        page.show_dialog(confirm_dialog)
         page.update()
 
     def open_info_modal(client_data):
@@ -162,12 +161,11 @@ def ClientesView(page: ft.Page):
             ],
             bgcolor=SURFACE_COLOR
         )
-        page.overlay.append(dialog)
-        dialog.open = True
+        page.show_dialog(dialog)
         page.update()
 
     def close_dialog(dialog):
-        dialog.open = False
+        page.pop_dialog()
         page.update()
 
     # --- Tabla de Clientes ---

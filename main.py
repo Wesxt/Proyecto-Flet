@@ -20,10 +20,6 @@ class AppState:
         self.username = ""
         self.cart_items = []
 
-# ... (omitiendo código intermedio que no cambiare directamente en la misma llamada, usaré dos llamadas)
-# Integrantes del grupo:
-#   Arnold Beleño Zuletta
-#   Jesús Santiago Díaz
 
 def main(page: ft.Page):
     # Inicializar Base de Datos
