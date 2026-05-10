@@ -124,14 +124,18 @@ def UsuariosView(page: ft.Page):
             cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
             conn.commit()
             conn.close()
-            close_dialog(dialog)
-            load_users()
+        def close_delete_dialog(dlg):
+            dlg.open = False
+            page.update()
+            if dlg in page.overlay:
+                page.overlay.remove(dlg)
+            page.update()
 
         dialog = ft.AlertDialog(
             title=ft.Text("Confirmar", weight=ft.FontWeight.BOLD),
             content=ft.Text("¿Está seguro de que desea eliminar este empleado? Esta acción no se puede deshacer."),
             actions=[
-                ft.TextButton("Cancelar", on_click=lambda _: close_dialog(dialog)),
+                ft.TextButton("Cancelar", on_click=lambda _: close_delete_dialog(dialog)),
                 ft.ElevatedButton("Eliminar", bgcolor=DANGER_COLOR, color="white", on_click=perform_delete)
             ],
             bgcolor=SURFACE_COLOR
@@ -218,8 +222,11 @@ def UsuariosView(page: ft.Page):
             ''', (edit_fullname.value, edit_user.value, edit_email.value, edit_role.value, new_salary, 1 if edit_status.value else 0, user["id"]))
             conn.commit()
             conn.close()
-            dialog.open = False
-            load_users()
+        def close_edit_dialog(dlg):
+            dlg.open = False
+            page.update()
+            if dlg in page.overlay:
+                page.overlay.remove(dlg)
             page.update()
 
         dialog = ft.AlertDialog(
@@ -229,17 +236,16 @@ def UsuariosView(page: ft.Page):
                 ft.Row([ft.Text("Estado"), edit_status]),
             ], tight=True, spacing=15),
             actions=[
-                ft.TextButton("Cancelar", on_click=lambda _: close_dialog(dialog)),
+                ft.TextButton("Cancelar", on_click=lambda _: close_edit_dialog(dialog)),
                 ft.ElevatedButton("Guardar", bgcolor=PRIMARY_COLOR, color="white", on_click=save_edit)
             ],
             bgcolor=SURFACE_COLOR
         )
-        page.overlay.append(dialog)
-        dialog.open = True
+        page.open(dialog)
         page.update()
 
     def close_dialog(dialog):
-        dialog.open = False
+        page.close(dialog)
         page.update()
 
     def reset_fields(e):

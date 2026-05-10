@@ -41,6 +41,7 @@ def main(page: ft.Page):
 
     # Contenedor dinámico para las vistas
     view_container = ft.Container(expand=True)
+    root_container = ft.Container(expand=True)
 
     # --- Menú de Navegación Lateral ---
     def get_nav_destinations(role):
@@ -120,12 +121,13 @@ def main(page: ft.Page):
         if user:
             state.role = None
             state.username = ""
-            dialog.open = False
             
-            page.controls.clear()
+            # Usar la API moderna de Flet para cerrar diálogos
+            close_dialog()
             
+            # En lugar de limpiar la página, actualizamos el root_container
             view_container = ft.Container(expand=True)
-            page.add(view_container)
+            root_container.content = view_container
             change_view("login")
             page.update()
         else:
@@ -187,16 +189,15 @@ def main(page: ft.Page):
             bgcolor=SURFACE_COLOR
         )
         btn_confirm_close.on_click = lambda e: close_cash_session(e, dialog)
-        page.overlay.append(dialog)
-        dialog.open = True
+        # Usar API moderna para abrir el diálogo
+        page.show_dialog(dialog)
         tf_close_pass.value = ""
         error_text_modal.visible = False
         btn_confirm_close.disabled = True
         page.update()
 
-    def close_dialog(dialog):
-        dialog.open = False
-        page.update()
+    def close_dialog():
+        page.pop_dialog()
 
     close_cash_btn = ft.Container(
         content=ft.TextButton(
@@ -246,7 +247,6 @@ def main(page: ft.Page):
         rail.selected_index = 0
         rail.height=500
         rail.width=100
-        page.controls.clear()
         
         main_layout = ft.Row(
             spacing=0,
@@ -261,14 +261,16 @@ def main(page: ft.Page):
                 view_container
             ]
         )
-        page.add(main_layout)
+        # Actualizamos el root_container en lugar de añadir a la página
+        root_container.content = main_layout
         
         if role == "Administrador": change_view("dashboard")
         elif role == "Supervisor": change_view("inventario")
         else: change_view("pos")
 
     # Inicio de la App
-    page.add(view_container)
+    root_container.content = view_container
+    page.add(root_container)
     change_view("login")
 
 if __name__ == "__main__":
