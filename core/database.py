@@ -127,6 +127,15 @@ def init_db():
     )
     ''')
 
+    # Create Audit Logs table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        details TEXT NOT NULL
+    )
+    ''')
     
     # Insert default users if not exists
     users_to_create = [
@@ -153,6 +162,7 @@ def init_db():
             ('Pan Molde', 'Pan de molde blanco 500g', 1.40, 2.00, 30, 5, 'Panadería', 10, 10, 10, 1)
         ]
         cursor.executemany('INSERT INTO products (name, description, price_buy, price_sell, stock, stock_min, category, in_limit, out_limit, adj_limit, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', sample_products)
+
 
     conn.commit()
     conn.close()

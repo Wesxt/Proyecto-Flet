@@ -1,6 +1,8 @@
 import flet as ft
 from core.colors import *
-from core.database import init_db, get_connection
+from core.database import init_db
+from models.user import User
+from models.sale import Sale
 
 # Importación de vistas optimizadas según la documentación técnica
 from views.login import LoginView
@@ -19,6 +21,8 @@ class AppState:
         self.role = None
         self.username = ""
         self.cart_items = []
+
+# Autores: Arnold Beleño Zuletta, Carlos Colón Cantillo y Jesús Santiago Díaz
 
 
 def main(page: ft.Page):
@@ -107,12 +111,7 @@ def main(page: ft.Page):
 
     def close_cash_session(e, dialog):
         nonlocal view_container
-        conn = get_connection()
-        cursor = conn.cursor()
-        # IMPORTANTE: Usar el username guardado en el estado
-        cursor.execute("SELECT id FROM users WHERE username = ? AND password = ?", (state.username, tf_close_pass.value))
-        user = cursor.fetchone()
-        conn.close()
+        user = User.get_by_username_and_password(state.username, tf_close_pass.value)
 
         if user:
             state.role = None
@@ -133,32 +132,12 @@ def main(page: ft.Page):
 
 
     def show_close_cash_modal(e):
-        # Calcular ventas del dia para el cierre
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        # Buscar el ID del usuario activo
-        cursor.execute("SELECT id FROM users WHERE username = ?", (state.username,))
-        u = cursor.fetchone()
-        user_id = u["id"] if u else None
-        
-        # Ventas de hoy del usuario
-        cursor.execute('''
-            SELECT 
-                COUNT(id) as total_ventas,
-                SUM(CASE WHEN payment_method = 'Efectivo' THEN total ELSE 0 END) as total_efectivo,
-                SUM(CASE WHEN payment_method = 'Tarjeta' THEN total ELSE 0 END) as total_tarjeta,
-                SUM(total) as total_esperado
-            FROM sales 
-            WHERE user_id = ? AND date(date, 'localtime') = date('now', 'localtime')
-        ''', (user_id,))
-        res = cursor.fetchone()
-        conn.close()
-
-        total_ventas = res["total_ventas"] or 0
-        t_efectivo = res["total_efectivo"] or 0
-        t_tarjeta = res["total_tarjeta"] or 0
-        t_esperado = res["total_esperado"] or 0
+        # Calcular ventas del dia para el cierre usando el modelo de Ventas
+        stats = Sale.get_today_user_sales_stats(state.username)
+        total_ventas = stats["total_ventas"]
+        t_efectivo = stats["total_efectivo"]
+        t_tarjeta = stats["total_tarjeta"]
+        t_esperado = stats["total_esperado"]
 
         # Mostramos los datos de Cierre de Caja (RF12)
         info_cierre = ft.Column([
