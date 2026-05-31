@@ -2,7 +2,7 @@ import sqlite3
 from core.database import get_connection
 
 class User:
-    def __init__(self, id, fullname, username, email, password, role, salary=0.0, status=1):
+    def __init__(self, id, fullname, username, email, password, role, salary=0.0, status=1, last_access=None, fecha_creacion=None):
         self.id = id
         self.fullname = fullname
         self.username = username
@@ -11,6 +11,8 @@ class User:
         self.role = role
         self.salary = salary
         self.status = status
+        self.last_access = last_access
+        self.fecha_creacion = fecha_creacion
 
     @staticmethod
     def from_row(row):
@@ -25,17 +27,25 @@ class User:
             password=row["password"],
             role=row["role"],
             salary=row["salary"] if "salary" in row.keys() and row["salary"] is not None else 0.0,
-            status=row["status"]
+            status=row["status"],
+            last_access=row["last_access"] if "last_access" in row.keys() else None,
+            fecha_creacion=row["fecha_creacion"] if "fecha_creacion" in row.keys() else None
         )
 
     @staticmethod
     def get_by_username_and_password(username, password):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ? AND status = 1", (username, password))
+        cursor.execute("SELECT * FROM users WHERE username = ? AND status = 1", (username,))
         row = cursor.fetchone()
         conn.close()
-        return User.from_row(row)
+        if not row:
+            return None
+            
+        from core.security import verify_password
+        if verify_password(password, row["password"]):
+            return User.from_row(row)
+        return None
 
     @staticmethod
     def get_by_username(username):
@@ -75,13 +85,15 @@ class User:
 
     @staticmethod
     def create(fullname, username, email, password, role, salary, status=1):
+        from core.security import hash_password
+        hashed_pwd = hash_password(password)
         conn = get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('''
                 INSERT INTO users (fullname, username, email, password, role, salary, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (fullname, username, email, password, role, salary, status))
+            ''', (fullname, username, email, hashed_pwd, role, salary, status))
             conn.commit()
             return True
         except Exception as e:
@@ -104,6 +116,20 @@ class User:
             return True
         except Exception as e:
             print(f"Error updating user: {e}")
+            return False
+        finally:
+            conn.close()
+
+    @staticmethod
+    def update_last_access(user_id):
+        conn = get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("UPDATE users SET last_access = CURRENT_TIMESTAMP WHERE id = ?", (user_id,))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error updating last access: {e}")
             return False
         finally:
             conn.close()

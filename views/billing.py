@@ -96,11 +96,33 @@ class BillingView(ft.Container):
         ], visible=False)
 
         self.cash_info = ft.Text("Si es efectivo no hay más datos que pedir sobre el método de pago", color=SUCCESS_COLOR, size=12, italic=True, visible=True)
+        
+        # Campos de Transferencia
+        self.transfer_info = ft.Column([
+            ft.Text("Si es transferencia bancaria se registrará como tal directamente.", color=SUCCESS_COLOR, size=12, italic=True),
+            ft.TextField(label="Banco / Entidad (Opcional)", border_color=PRIMARY_COLOR, value="")
+        ], visible=False)
+        
+        # Campos de Pago Mixto
+        self.tf_mixed_cash = ft.TextField(label="Monto en Efectivo ($)", value="0", keyboard_type=ft.KeyboardType.NUMBER, on_change=self.validate_mixed_payment)
+        self.tf_mixed_card = ft.TextField(label="Monto en Tarjeta ($)", value="0", keyboard_type=ft.KeyboardType.NUMBER, on_change=self.validate_mixed_payment)
+        self.tf_mixed_transfer = ft.TextField(label="Monto en Transferencia ($)", value="0", keyboard_type=ft.KeyboardType.NUMBER, on_change=self.validate_mixed_payment)
+        self.lbl_mixed_status = ft.Text("Monto restante: $ 0.00", color=WARNING_COLOR, size=13, weight=ft.FontWeight.BOLD)
+        
+        self.mixed_fields = ft.Column([
+            ft.Text("Desglose de Pago Mixto:", weight=ft.FontWeight.BOLD),
+            self.tf_mixed_cash,
+            self.tf_mixed_card,
+            self.tf_mixed_transfer,
+            self.lbl_mixed_status
+        ], visible=False)
 
         self.payment_method = ft.RadioGroup(
             content=ft.Column([
-                ft.Radio(value="tarjeta", label="Tarjeta de credito/debito"),
                 ft.Radio(value="efectivo", label="Efectivo"),
+                ft.Radio(value="tarjeta", label="Tarjeta de crédito/débito"),
+                ft.Radio(value="transferencia", label="Transferencia Bancaria"),
+                ft.Radio(value="pago mixto", label="Pago Mixto"),
             ]),
             value="efectivo",
             on_change=self.on_payment_change
@@ -130,6 +152,7 @@ class BillingView(ft.Container):
         )
 
         self.sw_register_client = ft.Switch(active_color=TEXT_PRIMARY)
+        self.btn_billing = ft.Button("Facturar", bgcolor=TEXT_PRIMARY, color=BACKGROUND_COLOR, expand=True, on_click=self.process_billing)
 
         right_panel = ft.Container(
             expand=6,
@@ -148,7 +171,7 @@ class BillingView(ft.Container):
                         ft.Row([
                             self.payment_method,
                             ft.VerticalDivider(color=DIVIDER_COLOR),
-                            ft.Column([self.card_fields, self.cash_info], expand=True)
+                            ft.Column([self.card_fields, self.cash_info, self.transfer_info, self.mixed_fields], expand=True)
                         ])
                     ])
                 ),
@@ -160,7 +183,7 @@ class BillingView(ft.Container):
                 ], alignment=ft.MainAxisAlignment.START),
                 ft.Row([
                     ft.OutlinedButton("Restablecer", expand=True, on_click=self.reset_fields),
-                    ft.Button("Facturar", bgcolor=TEXT_PRIMARY, color=BACKGROUND_COLOR, expand=True, on_click=self.process_billing)
+                    self.btn_billing
                 ], spacing=10)
             ], scroll=ft.ScrollMode.AUTO)
         )
@@ -199,9 +222,48 @@ class BillingView(ft.Container):
         self.page_ref.update()
 
     def on_payment_change(self, e):
-        is_tarjeta = (e.control.value == "tarjeta")
-        self.card_fields.visible = is_tarjeta
-        self.cash_info.visible = not is_tarjeta
+        val = e.control.value
+        self.card_fields.visible = (val == "tarjeta")
+        self.cash_info.visible = (val == "efectivo")
+        self.transfer_info.visible = (val == "transferencia")
+        self.mixed_fields.visible = (val == "pago mixto")
+        
+        # Reset mixed state if changing away
+        if val != "pago mixto":
+            self.btn_billing.disabled = False
+        else:
+            self.validate_mixed_payment()
+            
+        self.page_ref.update()
+
+    def validate_mixed_payment(self, e=None):
+        try:
+            cash = float(self.tf_mixed_cash.value or 0)
+            card = float(self.tf_mixed_card.value or 0)
+            transfer = float(self.tf_mixed_transfer.value or 0)
+        except ValueError:
+            self.lbl_mixed_status.value = "Por favor, ingrese montos numéricos válidos"
+            self.lbl_mixed_status.color = DANGER_COLOR
+            self.btn_billing.disabled = True
+            self.page_ref.update()
+            return
+            
+        total_entered = cash + card + transfer
+        difference = self.total - total_entered
+        
+        if abs(difference) < 0.01:
+            self.lbl_mixed_status.value = "Monto exacto alcanzado. ¡Listo para facturar!"
+            self.lbl_mixed_status.color = SUCCESS_COLOR
+            self.btn_billing.disabled = False
+        else:
+            if difference > 0:
+                self.lbl_mixed_status.value = f"Faltan: $ {difference:,.2f} para completar"
+                self.lbl_mixed_status.color = WARNING_COLOR
+            else:
+                self.lbl_mixed_status.value = f"Exceso de: $ {-difference:,.2f}"
+                self.lbl_mixed_status.color = DANGER_COLOR
+            self.btn_billing.disabled = True
+            
         self.page_ref.update()
 
     def reset_fields(self, e=None):
@@ -209,6 +271,16 @@ class BillingView(ft.Container):
         self.tf_doc_num.value = ""
         self.sw_register_client.value = False
         self.sw_register_client.disabled = False
+        self.tf_mixed_cash.value = "0"
+        self.tf_mixed_card.value = "0"
+        self.tf_mixed_transfer.value = "0"
+        self.payment_method.value = "efectivo"
+        self.btn_billing.disabled = False
+        # Hide all except cash_info
+        self.card_fields.visible = False
+        self.cash_info.visible = True
+        self.transfer_info.visible = False
+        self.mixed_fields.visible = False
         self.page_ref.update()
 
     def show_toast(self, text, color):
@@ -222,6 +294,23 @@ class BillingView(ft.Container):
             self.show_toast("El carrito está vacío", DANGER_COLOR)
             return
 
+        method_val = self.payment_method.value
+        if method_val == "pago mixto":
+            try:
+                cash = float(self.tf_mixed_cash.value or 0)
+                card = float(self.tf_mixed_card.value or 0)
+                transfer = float(self.tf_mixed_transfer.value or 0)
+            except ValueError:
+                self.show_toast("Por favor, ingrese montos válidos", DANGER_COLOR)
+                return
+            method_val = f"Pago Mixto (Efectivo: {cash:.2f}, Tarjeta: {card:.2f}, Transferencia: {transfer:.2f})"
+        elif method_val == "transferencia":
+            method_val = "Transferencia"
+        elif method_val == "tarjeta":
+            method_val = "Tarjeta"
+        else:
+            method_val = "Efectivo"
+
         try:
             # Delegate transaction processing to controller
             sale_id = self.controller.process_billing(
@@ -229,7 +318,7 @@ class BillingView(ft.Container):
                 client_fullname=self.tf_name.value,
                 doc_type=self.dd_doc_type.value,
                 doc_num=self.tf_doc_num.value,
-                payment_method_val=self.payment_method.value,
+                payment_method_val=method_val,
                 register_client_flag=self.sw_register_client.value,
                 total=self.total,
                 cart_items=self.cart_items

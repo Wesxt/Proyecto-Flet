@@ -34,6 +34,25 @@ class InventarioController:
         return success
 
     def save_item(self, is_edit, product_id, data):
+        # Validations
+        if not data.get('name') or not data.get('codigo_producto'):
+            return False, "El nombre y código de producto son obligatorios"
+            
+        try:
+            p_buy = float(data['price_buy'])
+            p_sell = float(data['price_sell'])
+        except ValueError:
+            return False, "Los precios deben ser valores numéricos"
+            
+        if p_sell <= p_buy:
+            return False, "El precio de venta debe ser mayor que el precio de compra"
+
+        if not is_edit:
+            # Check unique code
+            existing = Product.get_by_code(data['codigo_producto'])
+            if existing:
+                return False, "Ya existe un producto con ese código de producto"
+
         old_stock = 0
         if is_edit:
             conn = get_connection()
@@ -63,15 +82,15 @@ class InventarioController:
             cursor = conn.cursor()
             try:
                 cursor.execute('''
-                    INSERT INTO products (name, price_buy, price_sell, stock, stock_min, in_limit, out_limit, adj_limit, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+                    INSERT INTO products (name, price_buy, price_sell, stock, stock_min, in_limit, out_limit, adj_limit, status, codigo_producto)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                 ''', (data['name'], data['price_buy'], data['price_sell'], data['stock'], data['stock_min'],
-                      data['in_limit'], data['out_limit'], data['adj_limit']))
+                      data['in_limit'], data['out_limit'], data['adj_limit'], data['codigo_producto']))
                 conn.commit()
                 success = True
             except Exception as e:
                 print(f"Error creating inventory item: {e}")
-                success = False
+                return False, f"Error al crear item: {str(e)}"
             finally:
                 conn.close()
 
@@ -92,10 +111,12 @@ class InventarioController:
             now_str = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             AuditEvent.log_event("Cambio de Inventario", {
                 "item": data['name'],
+                "codigo": data['codigo_producto'],
                 "movimiento": movimiento,
                 "fecha_exacta": now_str,
                 "unidades": str(unidades),
                 "restante": str(new_stock)
             })
+            return True, "Item guardado exitosamente"
 
-        return success
+        return False, "Error al guardar el item"

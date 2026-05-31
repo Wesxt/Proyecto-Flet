@@ -14,6 +14,9 @@ class LoginController:
 
         user = User.get_by_username_and_password(username, password)
         if user:
+            # Actualizar marca de tiempo de último acceso
+            User.update_last_access(user.id)
+            
             # Registrar auditoría de inicio de sesión exitoso
             now_str = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             AuditEvent.log_event("Inicio de Sesión", {

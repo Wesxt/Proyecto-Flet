@@ -22,7 +22,10 @@ class BillingController:
         user = User.get_by_username(username)
         user_id = user.id if user else None
         
-        metodo = payment_method_val.capitalize()
+        if payment_method_val.lower().startswith("pago mixto"):
+            metodo = payment_method_val
+        else:
+            metodo = payment_method_val.capitalize()
         
         # Guardamos la venta en base de datos
         sale_id = Sale.create_sale(client_id, user_id, total, metodo, cart_items)

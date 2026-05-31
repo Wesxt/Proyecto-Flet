@@ -183,6 +183,7 @@ class InventarioView(ft.Container):
 
     def open_item_dialog(self, is_edit=False, item_data=None):
         tf_name = ft.TextField(label="Nombre del Item", value=item_data.name if item_data else "", border_color=PRIMARY_COLOR)
+        tf_code = ft.TextField(label="Código de producto", value=item_data.codigo_producto if item_data else "", border_color=PRIMARY_COLOR, disabled=is_edit)
         tf_price_buy = ft.TextField(label="Precio de compra", value=str(item_data.price_buy) if item_data else "", border_color=PRIMARY_COLOR)
         tf_price_sell = ft.TextField(label="Precio de venta", value=str(item_data.price_sell) if item_data else "", border_color=PRIMARY_COLOR)
         tf_stock = ft.TextField(label="Stock", value=str(item_data.stock) if item_data else "", border_color=PRIMARY_COLOR)
@@ -196,6 +197,7 @@ class InventarioView(ft.Container):
             try:
                 data = {
                     'name': tf_name.value,
+                    'codigo_producto': tf_code.value,
                     'price_buy': float(tf_price_buy.value),
                     'price_sell': float(tf_price_sell.value),
                     'stock': float(tf_stock.value),
@@ -204,10 +206,14 @@ class InventarioView(ft.Container):
                     'out_limit': int(tf_out_limit.value),
                     'adj_limit': int(tf_adj_limit.value)
                 }
-                success = self.controller.save_item(is_edit, item_data.id if item_data else None, data)
+                success, message = self.controller.save_item(is_edit, item_data.id if item_data else None, data)
                 if success:
                     self.close_dialog(dialog)
                     self.load_data()
+                else:
+                    self.page_ref.snack_bar = ft.SnackBar(ft.Text(message), bgcolor=DANGER_COLOR)
+                    self.page_ref.snack_bar.open = True
+                    self.page_ref.update()
             except ValueError:
                 self.page_ref.snack_bar = ft.SnackBar(ft.Text("Por favor, ingrese valores numéricos válidos"), bgcolor=DANGER_COLOR)
                 self.page_ref.snack_bar.open = True
@@ -225,7 +231,7 @@ class InventarioView(ft.Container):
                 width=600,
                 content=ft.Row([
                     ft.Column([
-                        tf_name, tf_price_buy, tf_price_sell, tf_stock,
+                        tf_name, tf_code, tf_price_buy, tf_price_sell, tf_stock,
                         ft.Text("Alerta", weight=ft.FontWeight.BOLD, color=SECONDARY_COLOR),
                         tf_stock_min,
                         ft.Container(height=10),

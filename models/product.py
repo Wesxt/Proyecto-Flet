@@ -2,7 +2,7 @@ import sqlite3
 from core.database import get_connection
 
 class Product:
-    def __init__(self, id, name, description, price_buy, price_sell, stock, stock_min, category, in_limit=10, out_limit=10, adj_limit=10, status=1, image=None):
+    def __init__(self, id, name, description, price_buy, price_sell, stock, stock_min, category, in_limit=10, out_limit=10, adj_limit=10, status=1, image=None, codigo_producto=None):
         self.id = id
         self.name = name
         self.description = description
@@ -16,6 +16,7 @@ class Product:
         self.adj_limit = adj_limit
         self.status = status
         self.image = image
+        self.codigo_producto = codigo_producto
 
     @staticmethod
     def from_row(row):
@@ -34,7 +35,8 @@ class Product:
             out_limit=row["out_limit"] if "out_limit" in row.keys() else 10,
             adj_limit=row["adj_limit"] if "adj_limit" in row.keys() else 10,
             status=row["status"] if "status" in row.keys() else 1,
-            image=row["image"] if "image" in row.keys() else None
+            image=row["image"] if "image" in row.keys() else None,
+            codigo_producto=row["codigo_producto"] if "codigo_producto" in row.keys() else None
         )
 
     @staticmethod
@@ -44,8 +46,8 @@ class Product:
         query = "SELECT * FROM products WHERE status = 1"
         params = []
         if search_term:
-            query += " AND (name LIKE ? OR category LIKE ?)"
-            params.extend([f"%{search_term}%", f"%{search_term}%"])
+            query += " AND (name LIKE ? OR category LIKE ? OR codigo_producto LIKE ?)"
+            params.extend([f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"])
         cursor.execute(query, params)
         rows = cursor.fetchall()
         conn.close()
@@ -79,14 +81,23 @@ class Product:
         return count
 
     @staticmethod
-    def create(name, description, price_buy, price_sell, stock, stock_min, category, status=1):
+    def get_by_code(code):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM products WHERE codigo_producto = ? AND status = 1", (code,))
+        row = cursor.fetchone()
+        conn.close()
+        return Product.from_row(row) if row else None
+
+    @staticmethod
+    def create(name, description, price_buy, price_sell, stock, stock_min, category, codigo_producto, status=1):
         conn = get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('''
-                INSERT INTO products (name, description, price_buy, price_sell, stock, stock_min, category, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (name, description, price_buy, price_sell, stock, stock_min, category, status))
+                INSERT INTO products (name, description, price_buy, price_sell, stock, stock_min, category, codigo_producto, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (name, description, price_buy, price_sell, stock, stock_min, category, codigo_producto, status))
             conn.commit()
             return True
         except Exception as e:
@@ -96,15 +107,15 @@ class Product:
             conn.close()
 
     @staticmethod
-    def update(product_id, name, description, price_buy, price_sell, stock, stock_min, category, status):
+    def update(product_id, name, description, price_buy, price_sell, stock, stock_min, category, codigo_producto, status):
         conn = get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('''
                 UPDATE products 
-                SET name=?, description=?, price_buy=?, price_sell=?, stock=?, stock_min=?, category=?, status=?
+                SET name=?, description=?, price_buy=?, price_sell=?, stock=?, stock_min=?, category=?, codigo_producto=?, status=?
                 WHERE id=?
-            ''', (name, description, price_buy, price_sell, stock, stock_min, category, status, product_id))
+            ''', (name, description, price_buy, price_sell, stock, stock_min, category, codigo_producto, status, product_id))
             conn.commit()
             return True
         except Exception as e:

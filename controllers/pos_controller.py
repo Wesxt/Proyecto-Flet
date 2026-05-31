@@ -16,37 +16,55 @@ class POSController:
         return CashRegister.open_register(username, initial_amount)
 
     def get_register_close_data(self, active_register):
-        # We need the username and stats
-        # active_register is a CashRegister object
         # We need opening_time and user_id to compute sales since opening
         import sqlite3
+        import re
         from core.database import get_connection
         
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT 
-                SUM(CASE WHEN payment_method = 'Efectivo' THEN total ELSE 0 END) as total_efectivo,
-                SUM(CASE WHEN payment_method = 'Tarjeta' THEN total ELSE 0 END) as total_tarjeta,
-                SUM(total) as total_ventas
+            SELECT total, payment_method 
             FROM sales 
-            WHERE user_id = ? AND date >= ?
+            WHERE user_id = ? AND date >= ? AND status = 1
         ''', (active_register.user_id, active_register.opening_time))
-        res = cursor.fetchone()
+        rows = cursor.fetchall()
         conn.close()
         
-        efectivo = res["total_efectivo"] or 0
-        tarjeta = res["total_tarjeta"] or 0
+        efectivo = 0.0
+        tarjeta = 0.0
+        transferencia = 0.0
+        
+        for r in rows:
+            total = r["total"]
+            metodo = r["payment_method"]
+            
+            if metodo == 'Efectivo':
+                efectivo += total
+            elif metodo == 'Tarjeta':
+                tarjeta += total
+            elif metodo == 'Transferencia':
+                transferencia += total
+            elif metodo.startswith('Pago Mixto'):
+                ef = re.search(r'Efectivo:\s*([\d\.]+)', metodo)
+                tj = re.search(r'Tarjeta:\s*([\d\.]+)', metodo)
+                tr = re.search(r'Transferencia:\s*([\d\.]+)', metodo)
+                
+                efectivo += float(ef.group(1)) if ef else 0.0
+                tarjeta += float(tj.group(1)) if tj else 0.0
+                transferencia += float(tr.group(1)) if tr else 0.0
+                
         esperado = active_register.initial_amount + efectivo
         
         return {
             "efectivo": efectivo,
             "tarjeta": tarjeta,
+            "transferencia": transferencia,
             "esperado": esperado
         }
 
-    def close_cash_register(self, register_id, expected_amount, actual_amount, cash_sales, card_sales, difference):
-        return CashRegister.close_register(register_id, expected_amount, actual_amount, cash_sales, card_sales, difference)
+    def close_cash_register(self, register_id, expected_amount, actual_amount, cash_sales, card_sales, transfer_sales, difference):
+        return CashRegister.close_register(register_id, expected_amount, actual_amount, cash_sales, card_sales, transfer_sales, difference)
 
     def get_active_products(self):
         return Product.get_active()

@@ -230,6 +230,7 @@ class POSView(ft.Container):
         stats = self.controller.get_register_close_data(self.active_register)
         efectivo = stats["efectivo"]
         tarjeta = stats["tarjeta"]
+        transferencia = stats["transferencia"]
         esperado = stats["esperado"]
         
         self.lbl_expected.value = f"Monto Esperado (Inicial + Efectivo): $ {esperado:,.2f}"
@@ -242,7 +243,7 @@ class POSView(ft.Container):
             
             diferencia = actual - esperado
             success = self.controller.close_cash_register(
-                self.active_register.id, esperado, actual, efectivo, tarjeta, diferencia
+                self.active_register.id, esperado, actual, efectivo, tarjeta, transferencia, diferencia
             )
             
             if success:
@@ -261,6 +262,7 @@ class POSView(ft.Container):
             content=ft.Column([
                 ft.Text(f"Ventas en Efectivo: $ {efectivo:,.2f}"),
                 ft.Text(f"Ventas con Tarjeta: $ {tarjeta:,.2f}"),
+                ft.Text(f"Ventas por Transferencia: $ {transferencia:,.2f}"),
                 self.lbl_expected,
                 ft.Divider(color=DIVIDER_COLOR),
                 self.tf_actual_amount

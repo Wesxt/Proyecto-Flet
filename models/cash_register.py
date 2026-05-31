@@ -75,7 +75,7 @@ class CashRegister:
             conn.close()
 
     @staticmethod
-    def close_register(register_id, expected_amount, actual_amount, cash_sales, card_sales, difference):
+    def close_register(register_id, expected_amount, actual_amount, cash_sales, card_sales, transfer_sales, difference):
         conn = get_connection()
         cursor = conn.cursor()
         try:
@@ -86,10 +86,11 @@ class CashRegister:
                     actual_amount = ?, 
                     cash_sales = ?, 
                     card_sales = ?, 
+                    transfer_sales = ?,
                     difference = ?, 
                     status = 0
                 WHERE id = ?
-            ''', (expected_amount, actual_amount, cash_sales, card_sales, difference, register_id))
+            ''', (expected_amount, actual_amount, cash_sales, card_sales, transfer_sales, difference, register_id))
             conn.commit()
             return True
         except Exception as e:

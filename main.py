@@ -15,6 +15,7 @@ from views.inventario import InventarioView
 from views.usuarios import UsuariosView
 from views.reportes import ReportesView
 from views.auditoria import AuditoriaView
+from views.facturas import FacturasView
 
 class AppState:
     def __init__(self):
@@ -51,6 +52,7 @@ def main(page: ft.Page):
                 ft.NavigationRailDestination(icon=ft.Icons.PEOPLE_OUTLINED, selected_icon=ft.Icons.PEOPLE, label="Usuarios"),
                 ft.NavigationRailDestination(icon=ft.Icons.SHOPPING_BAG_OUTLINED, selected_icon=ft.Icons.SHOPPING_BAG, label="Productos"),
                 ft.NavigationRailDestination(icon=ft.Icons.INVENTORY_2_OUTLINED, selected_icon=ft.Icons.INVENTORY_2, label="Inventario"),
+                ft.NavigationRailDestination(icon=ft.Icons.RECEIPT_LONG, selected_icon=ft.Icons.RECEIPT_LONG, label="Facturas"),
                 ft.NavigationRailDestination(icon=ft.Icons.BAR_CHART_OUTLINED, selected_icon=ft.Icons.BAR_CHART, label="Reportes"),
                 ft.NavigationRailDestination(icon=ft.Icons.STAR_OUTLINE, selected_icon=ft.Icons.STAR, label="Clientes"),
                 ft.NavigationRailDestination(icon=ft.Icons.LIST_ALT_OUTLINED, selected_icon=ft.Icons.LIST_ALT, label="Auditoría"),
@@ -59,6 +61,8 @@ def main(page: ft.Page):
             return [
                 ft.NavigationRailDestination(icon=ft.Icons.INVENTORY_2_OUTLINED, selected_icon=ft.Icons.INVENTORY_2, label="Inventario"),
                 ft.NavigationRailDestination(icon=ft.Icons.SHOPPING_BAG_OUTLINED, selected_icon=ft.Icons.SHOPPING_BAG, label="Productos"),
+                ft.NavigationRailDestination(icon=ft.Icons.RECEIPT_LONG, selected_icon=ft.Icons.RECEIPT_LONG, label="Facturas"),
+                ft.NavigationRailDestination(icon=ft.Icons.BAR_CHART_OUTLINED, selected_icon=ft.Icons.BAR_CHART, label="Reportes"),
                 ft.NavigationRailDestination(icon=ft.Icons.LIST_ALT_OUTLINED, selected_icon=ft.Icons.LIST_ALT, label="Auditoría"),
             ]
         elif role == "Cajero":
@@ -66,7 +70,6 @@ def main(page: ft.Page):
                 ft.NavigationRailDestination(icon=ft.Icons.POINT_OF_SALE, selected_icon=ft.Icons.POINT_OF_SALE, label="Punto de venta"),
                 ft.NavigationRailDestination(icon=ft.Icons.RECEIPT_LONG, selected_icon=ft.Icons.RECEIPT_LONG, label="Facturas"),
                 ft.NavigationRailDestination(icon=ft.Icons.SHOPPING_BAG_OUTLINED, selected_icon=ft.Icons.SHOPPING_BAG, label="Productos"),
-                ft.NavigationRailDestination(icon=ft.Icons.SHOPPING_CART_CHECKOUT, selected_icon=ft.Icons.SHOPPING_CART_CHECKOUT, label="Ventas"),
                 ft.NavigationRailDestination(icon=ft.Icons.STAR_OUTLINE, selected_icon=ft.Icons.STAR, label="Clientes Frecuentes"),
             ]
         return []
@@ -76,15 +79,13 @@ def main(page: ft.Page):
         role = state.role
         
         if role == "Administrador":
-            views = ["dashboard", "usuarios", "productos", "inventario", "reportes", "clientes", "auditoria"]
+            views = ["dashboard", "usuarios", "productos", "inventario", "facturas", "reportes", "clientes", "auditoria"]
             change_view(views[idx])
         elif role == "Supervisor":
-            views = ["inventario", "productos", "auditoria"]
+            views = ["inventario", "productos", "facturas", "reportes", "auditoria"]
             change_view(views[idx])
         elif role == "Cajero":
-            # Nota: "ventas" y "facturas" pueden apuntar a la misma vista temporalmente o a vistas existentes.
-            # "pos" = Punto de Venta, "productos" = Productos, "clientes" = Clientes Frecuentes
-            views = ["pos", "billing", "productos", "reportes", "clientes"]
+            views = ["pos", "facturas", "productos", "clientes"]
             change_view(views[idx])
 
     # Rail de navegación lateral
@@ -137,6 +138,7 @@ def main(page: ft.Page):
         total_ventas = stats["total_ventas"]
         t_efectivo = stats["total_efectivo"]
         t_tarjeta = stats["total_tarjeta"]
+        t_transferencia = stats["total_transferencia"]
         t_esperado = stats["total_esperado"]
 
         # Mostramos los datos de Cierre de Caja (RF12)
@@ -144,6 +146,7 @@ def main(page: ft.Page):
             ft.Text(f"Total de ventas realizadas hoy: {total_ventas}"),
             ft.Text(f"Ventas en Efectivo: $ {t_efectivo:,.2f}"),
             ft.Text(f"Ventas con Tarjeta: $ {t_tarjeta:,.2f}"),
+            ft.Text(f"Ventas por Transferencia: $ {t_transferencia:,.2f}"),
             ft.Text(f"Total Esperado en Caja: $ {t_esperado:,.2f}", weight=ft.FontWeight.BOLD, color=SUCCESS_COLOR),
             ft.Divider(color=DIVIDER_COLOR),
         ])
@@ -158,7 +161,7 @@ def main(page: ft.Page):
                 error_text_modal
             ], tight=True),
             actions=[
-                ft.TextButton("Cancelar", on_click=lambda _: close_dialog(dialog)),
+                ft.TextButton("Cancelar", on_click=lambda _: close_dialog()),
                 btn_confirm_close
             ],
             bgcolor=SURFACE_COLOR
@@ -206,11 +209,16 @@ def main(page: ft.Page):
             view_container.content = ReportesView(page)
         elif name == "auditoria":
             view_container.content = AuditoriaView(page)
+        elif name == "facturas":
+            view_container.content = FacturasView(page, state)
         page.update()
 
     def change_view_from_internal(name):
         if state.role == "Cajero":
-            rail.selected_index = 1
+            if name == "pos":
+                rail.selected_index = 0
+            elif name == "facturas":
+                rail.selected_index = 1
         rail.update()
         change_view(name)
 

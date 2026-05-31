@@ -78,12 +78,14 @@ class AuditoriaView(ft.Container):
                 ft.TextField(label="Nombre del cliente", value=details.get("cliente"), read_only=True),
                 ft.TextField(label="Metodo de pago", value=details.get("metodo_pago"), read_only=True),
             ]
-        elif event_type == "Anulación":
+        elif event_type == "Anulación" or event_type == "Anulación de Factura":
             content.controls = [
-                ft.TextField(label="Código de factura", value=details.get("factura"), read_only=True),
-                ft.TextField(label="Fecha de anulación", value=details.get("fecha_exacta"), read_only=True),
-                ft.TextField(label="Nombre del cliente", value=details.get("cliente"), read_only=True),
-                ft.TextField(label="Total anulado", value=details.get("total"), color=DANGER_COLOR, text_style=ft.TextStyle(weight=ft.FontWeight.BOLD), read_only=True),
+                ft.TextField(label="Código de factura", value=details.get("factura") or details.get("sale_id", ""), read_only=True),
+                ft.TextField(label="Fecha de anulación", value=details.get("fecha_exacta", ""), read_only=True),
+                ft.TextField(label="Nombre del cliente", value=details.get("cliente", "Consumidor Final"), read_only=True),
+                ft.TextField(label="Usuario que anuló", value=details.get("usuario", ""), read_only=True),
+                ft.TextField(label="Rol del usuario", value=details.get("rol", ""), read_only=True),
+                ft.TextField(label="Total anulado", value=details.get("total", ""), color=DANGER_COLOR, text_style=ft.TextStyle(weight=ft.FontWeight.BOLD), read_only=True),
             ]
         elif event_type == "Cambio de Inventario":
             content.controls = [

@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from core.security import hash_password
 
 DB_PATH = "sistema_ventas.db"
 
@@ -22,7 +23,9 @@ def init_db():
         password TEXT NOT NULL,
         role TEXT NOT NULL,
         salary REAL DEFAULT 0,
-        status INTEGER DEFAULT 1
+        status INTEGER DEFAULT 1,
+        last_access TIMESTAMP,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
     
@@ -31,6 +34,16 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN salary REAL DEFAULT 0")
     except sqlite3.OperationalError:
         pass  # La columna ya existe
+        
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN last_access TIMESTAMP")
+    except sqlite3.OperationalError:
+        pass
+        
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    except sqlite3.OperationalError:
+        pass
     
     # Create Products table
     cursor.execute('''
@@ -47,9 +60,15 @@ def init_db():
         out_limit INTEGER DEFAULT 10,
         adj_limit INTEGER DEFAULT 10,
         status INTEGER DEFAULT 1,
-        image TEXT
+        image TEXT,
+        codigo_producto TEXT
     )
     ''')
+    
+    try:
+        cursor.execute("ALTER TABLE products ADD COLUMN codigo_producto TEXT")
+    except sqlite3.OperationalError:
+        pass
     
     # Create Clients table
     cursor.execute('''
@@ -60,9 +79,15 @@ def init_db():
         doc_num TEXT,
         email TEXT,
         phone TEXT,
-        address TEXT
+        address TEXT,
+        fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
+    
+    try:
+        cursor.execute("ALTER TABLE clients ADD COLUMN fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    except sqlite3.OperationalError:
+        pass
     
     # Create Sales table
     cursor.execute('''
@@ -73,6 +98,7 @@ def init_db():
         total REAL NOT NULL,
         payment_method TEXT DEFAULT 'Efectivo',
         date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status INTEGER DEFAULT 1,
         FOREIGN KEY (client_id) REFERENCES clients (id),
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
@@ -83,6 +109,11 @@ def init_db():
         cursor.execute("ALTER TABLE sales ADD COLUMN payment_method TEXT DEFAULT 'Efectivo'")
     except sqlite3.OperationalError:
         pass  # La columna ya existe
+        
+    try:
+        cursor.execute("ALTER TABLE sales ADD COLUMN status INTEGER DEFAULT 1")
+    except sqlite3.OperationalError:
+        pass
     
     # Create Sale Details table
     cursor.execute('''
@@ -121,11 +152,17 @@ def init_db():
         actual_amount REAL,
         cash_sales REAL DEFAULT 0,
         card_sales REAL DEFAULT 0,
+        transfer_sales REAL DEFAULT 0,
         difference REAL,
         status INTEGER DEFAULT 1,
         FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')
+    
+    try:
+        cursor.execute("ALTER TABLE cash_registers ADD COLUMN transfer_sales REAL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
 
     # Create Audit Logs table
     cursor.execute('''
@@ -137,7 +174,7 @@ def init_db():
     )
     ''')
     
-    # Insert default users if not exists
+    # Insert default users if not exists (with hashed passwords)
     users_to_create = [
         ('Administrador Principal', 'admin', 'admin@empresa.com', 'admin123', 'Administrador', 1),
         ('Supervisor de Turno', 'supervisor', 'super@empresa.com', 'super123', 'Supervisor', 1),
@@ -147,22 +184,47 @@ def init_db():
     for fullname, username, email, password, role, status in users_to_create:
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         if not cursor.fetchone():
+            hashed_pwd = hash_password(password)
             cursor.execute('''
             INSERT INTO users (fullname, username, email, password, role, status)
             VALUES (?, ?, ?, ?, ?, ?)
-            ''', (fullname, username, email, password, role, status))
+            ''', (fullname, username, email, hashed_pwd, role, status))
+            
+    # Migración: cifrar contraseñas existentes en texto plano
+    cursor.execute("SELECT id, password FROM users")
+    for row in cursor.fetchall():
+        current_pwd = row["password"]
+        # Si la contraseña no tiene longitud 64 (SHA-256 hash), asumimos que es texto plano y la ciframos
+        if len(current_pwd) != 64:
+            new_hashed = hash_password(current_pwd)
+            cursor.execute("UPDATE users SET password = ? WHERE id = ?", (new_hashed, row["id"]))
         
     # Insert some sample products if table is empty
     cursor.execute("SELECT COUNT(*) FROM products")
     if cursor.fetchone()[0] == 0:
         sample_products = [
-            ('Arroz 1kg', 'Arroz blanco de grano largo', 1.00, 1.50, 100, 10, 'Abarrotes', 10, 10, 10, 1),
-            ('Aceite 1L', 'Aceite vegetal refinado', 2.50, 3.20, 50, 5, 'Aceites', 10, 10, 10, 1),
-            ('Leche 1L', 'Leche entera pasteurizada', 0.80, 1.10, 80, 10, 'Lácteos', 10, 10, 10, 1),
-            ('Pan Molde', 'Pan de molde blanco 500g', 1.40, 2.00, 30, 5, 'Panadería', 10, 10, 10, 1)
+            ('Arroz 1kg', 'Arroz blanco de grano largo', 1.00, 1.50, 100, 10, 'Abarrotes', 10, 10, 10, 1, 'PROD-001'),
+            ('Aceite 1L', 'Aceite vegetal refinado', 2.50, 3.20, 50, 5, 'Aceites', 10, 10, 10, 1, 'PROD-002'),
+            ('Leche 1L', 'Leche entera pasteurizada', 0.80, 1.10, 80, 10, 'Lácteos', 10, 10, 10, 1, 'PROD-003'),
+            ('Pan Molde', 'Pan de molde blanco 500g', 1.40, 2.00, 30, 5, 'Panadería', 10, 10, 10, 1, 'PROD-004')
         ]
-        cursor.executemany('INSERT INTO products (name, description, price_buy, price_sell, stock, stock_min, category, in_limit, out_limit, adj_limit, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', sample_products)
+        cursor.executemany('INSERT INTO products (name, description, price_buy, price_sell, stock, stock_min, category, in_limit, out_limit, adj_limit, status, codigo_producto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', sample_products)
 
+    # Migración: asignar códigos de producto secuenciales a productos existentes que no tengan código
+    cursor.execute("SELECT id, codigo_producto FROM products")
+    prod_rows = cursor.fetchall()
+    for idx, row in enumerate(prod_rows):
+        if not row["codigo_producto"]:
+            generated_code = f"PROD-{idx+1:03d}"
+            cursor.execute("UPDATE products SET codigo_producto = ? WHERE id = ?", (generated_code, row["id"]))
+
+    # Seed default client "Consumidor Final" if not exists
+    cursor.execute("SELECT * FROM clients WHERE doc_num = '9999999999'")
+    if not cursor.fetchone():
+        cursor.execute('''
+            INSERT INTO clients (fullname, doc_type, doc_num, phone, email, address)
+            VALUES ('Consumidor Final', 'Cédula de ciudadanía', '9999999999', '', '', '')
+        ''')
 
     conn.commit()
     conn.close()

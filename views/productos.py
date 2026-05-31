@@ -18,6 +18,7 @@ class ProductosView(ft.Container):
     def build_ui(self):
         # --- Controles de Creación ---
         self.tf_name = ft.TextField(label="Nombre", expand=True)
+        self.tf_code = ft.TextField(label="Código de producto", expand=True)
         self.tf_desc = ft.TextField(label="Descripción", expand=True)
         self.tf_price_buy = ft.TextField(label="Precio de compra", expand=True)
         self.tf_price_sell = ft.TextField(label="Precio de venta", expand=True)
@@ -34,7 +35,7 @@ class ProductosView(ft.Container):
         self.product_grid = ft.GridView(
             expand=True,
             max_extent=200,
-            child_aspect_ratio=1.2, 
+            child_aspect_ratio=1.1, 
             spacing=15,
             run_spacing=15,
         )
@@ -51,6 +52,7 @@ class ProductosView(ft.Container):
             content=ft.Column([
                 ft.Text("Crear producto", weight=ft.FontWeight.BOLD, size=18),
                 self.tf_name,
+                self.tf_code,
                 self.tf_desc,
                 self.tf_price_buy,
                 self.tf_price_sell,
@@ -58,7 +60,7 @@ class ProductosView(ft.Container):
                 self.tf_stock_min,
                 self.dd_category,
                 self.sw_status,
-                ft.Text("El id del producto y el código se generan automáticamente", size=11, color=TEXT_SECONDARY, italic=True),
+                ft.Text("El id del producto se genera automáticamente", size=11, color=TEXT_SECONDARY, italic=True),
                 ft.Row([
                     ft.OutlinedButton("Restablecer", expand=True, on_click=self.reset_fields),
                     ft.Button("Registrar", bgcolor=PRIMARY_COLOR, color="white", expand=True, on_click=self.register_product)
@@ -91,10 +93,11 @@ class ProductosView(ft.Container):
             card = ft.Container(
                 content=ft.Column([
                     ft.Text(p.name, weight=ft.FontWeight.BOLD, size=16, no_wrap=True),
+                    ft.Text(f"Código: {p.codigo_producto if p.codigo_producto else 'N/A'}", size=11, color=TEXT_SECONDARY),
                     ft.Text(p.category if p.category else "Sin categoría", size=12, color=TEXT_SECONDARY),
                     ft.Text(f"${p.price_sell:.2f}", color=PRIMARY_COLOR, weight=ft.FontWeight.W_600),
                     ft.Text(f"Stock: {p.stock}", size=11, color=TEXT_SECONDARY if p.stock > p.stock_min else DANGER_COLOR)
-                ], spacing=5, alignment=ft.MainAxisAlignment.CENTER),
+                ], spacing=3, alignment=ft.MainAxisAlignment.CENTER),
                 padding=15,
                 border_radius=10,
                 border=ft.Border.all(1, DIVIDER_COLOR),
@@ -114,6 +117,7 @@ class ProductosView(ft.Container):
 
     def reset_fields(self, e=None):
         self.tf_name.value = ""
+        self.tf_code.value = ""
         self.tf_desc.value = ""
         self.tf_price_buy.value = ""
         self.tf_price_sell.value = ""
@@ -127,7 +131,7 @@ class ProductosView(ft.Container):
         success, message = self.controller.register_product(
             self.tf_name.value, self.tf_desc.value, self.tf_price_buy.value,
             self.tf_price_sell.value, self.tf_stock_actual.value, self.tf_stock_min.value,
-            self.dd_category.value, self.sw_status.value
+            self.dd_category.value, self.tf_code.value, self.sw_status.value
         )
         self.show_toast(message, SUCCESS_COLOR if success else DANGER_COLOR)
         if success:
@@ -143,6 +147,7 @@ class ProductosView(ft.Container):
 
     def open_info_modal(self, prod):
         m_name = ft.TextField(label="Nombre", value=prod.name)
+        m_code = ft.TextField(label="Código de producto", value=prod.codigo_producto if prod.codigo_producto else "")
         m_desc = ft.TextField(label="Descripción", value=prod.description if prod.description else "")
         m_price_buy = ft.TextField(label="Precio de compra", value=str(prod.price_buy))
         m_price_sell = ft.TextField(label="Precio de venta", value=str(prod.price_sell))
@@ -159,7 +164,7 @@ class ProductosView(ft.Container):
             success, message = self.controller.update_product(
                 prod.id, m_name.value, m_desc.value, m_price_buy.value,
                 m_price_sell.value, m_stock.value, m_stock_min.value, m_cat.value,
-                m_status.value
+                m_code.value, m_status.value
             )
             if success:
                 self.page_ref.pop_dialog()
@@ -174,7 +179,7 @@ class ProductosView(ft.Container):
                 ft.IconButton(ft.Icons.CLOSE, on_click=lambda _: self.close_dialog(dialog))
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             content=ft.Column([
-                m_name, m_desc, m_price_buy, m_price_sell, m_stock, m_stock_min, m_cat,
+                m_name, m_code, m_desc, m_price_buy, m_price_sell, m_stock, m_stock_min, m_cat,
                 m_status
             ], tight=True, scroll=ft.ScrollMode.AUTO, width=350),
             actions=[

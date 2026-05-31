@@ -98,8 +98,9 @@ class ClientesView(ft.Container):
                     ft.DataCell(ft.Text(c.doc_num if c.doc_num else "N/A")),
                     ft.DataCell(ft.Text(last_p)),
                     ft.DataCell(ft.Row([
-                        ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_COLOR, on_click=lambda _, cid=c.id: self.delete_client(cid)),
-                        ft.IconButton(ft.Icons.EXPAND_CIRCLE_DOWN_OUTLINED, icon_color=PRIMARY_COLOR, on_click=lambda _, client_data=c: self.open_info_modal(client_data)),
+                        ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_COLOR, on_click=lambda _, cid=c.id: self.delete_client(cid), tooltip="Eliminar cliente"),
+                        ft.IconButton(ft.Icons.EXPAND_CIRCLE_DOWN_OUTLINED, icon_color=PRIMARY_COLOR, on_click=lambda _, client_data=c: self.open_info_modal(client_data), tooltip="Editar información"),
+                        ft.IconButton(ft.Icons.HISTORY, icon_color=SECONDARY_COLOR, on_click=lambda _, client_data=c: self.open_history_modal(client_data), tooltip="Historial de compras"),
                     ]))
                 ])
             )
@@ -194,4 +195,47 @@ class ClientesView(ft.Container):
 
     def close_dialog(self, dialog):
         self.page_ref.pop_dialog()
+        self.page_ref.update()
+
+    def open_history_modal(self, client_data):
+        purchases = self.controller.get_client_purchase_history(client_data.id)
+        
+        history_table = ft.DataTable(
+            columns=[
+                ft.DataColumn(label=ft.Text("Factura ID")),
+                ft.DataColumn(label=ft.Text("Fecha")),
+                ft.DataColumn(label=ft.Text("Método Pago")),
+                ft.DataColumn(label=ft.Text("Total")),
+            ],
+            rows=[]
+        )
+        
+        for p in purchases:
+            history_table.rows.append(
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text(f"#{p['id']}")),
+                    ft.DataCell(ft.Text(p['date'])),
+                    ft.DataCell(ft.Text(p['payment_method'])),
+                    ft.DataCell(ft.Text(f"${p['total']:,.2f}")),
+                ])
+            )
+            
+        content_view = ft.Column([
+            ft.Text(f"Compras de {client_data.fullname}", weight=ft.FontWeight.BOLD, size=16),
+            ft.Divider(color=DIVIDER_COLOR),
+            ft.Container(
+                content=ft.Column([history_table], scroll=ft.ScrollMode.AUTO),
+                height=300
+            )
+        ], tight=True) if purchases else ft.Text("Este cliente no tiene compras registradas.", italic=True, color=TEXT_SECONDARY)
+        
+        dialog = ft.AlertDialog(
+            title=ft.Row([
+                ft.Text("Historial de Compras", weight=ft.FontWeight.BOLD),
+                ft.IconButton(ft.Icons.CLOSE, on_click=lambda e: self.close_dialog(dialog))
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            content=content_view,
+            bgcolor=SURFACE_COLOR
+        )
+        self.page_ref.show_dialog(dialog)
         self.page_ref.update()
